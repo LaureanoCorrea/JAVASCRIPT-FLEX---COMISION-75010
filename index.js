@@ -13,16 +13,16 @@ while (continuar) {
   );
 
   if (dominio.toLowerCase() === "salir") {
-    continuar = false; // Finaliza el ciclo si el usuario ingresa 'salir'
+    continuar = false;
   } else {
     let kmRecorridos = parseFloat(
       prompt("Ingrese la cantidad de kilómetros recorridos:")
     );
-    viajes.push({ dominio: dominio, km: kmRecorridos }); // Agrega el objeto con dominio y km al array
+    viajes.push({ dominio: dominio, km: kmRecorridos });
   }
 }
 
-// Función para calcular el costo de un viaje
+// Función para calcular el costo los viaje
 function calcularCostoViaje(precioKm, km, movida) {
   if (km > 200) {
     return precioKm * km; // Si supera 200 km, solo se cobra el precio por km
@@ -31,7 +31,6 @@ function calcularCostoViaje(precioKm, km, movida) {
   }
 }
 
-// Realizar los cálculos y mostrar los resultados
 for (let viaje of viajes) {
   const costo = calcularCostoViaje(precioPorKm, viaje.km, precioMovida);
   alert(
