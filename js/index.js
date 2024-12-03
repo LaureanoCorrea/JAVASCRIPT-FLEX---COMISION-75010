@@ -139,5 +139,4 @@ formulario.addEventListener("submit", (e) => {
   formulario.reset();
 });
 
-// Inicializar tabla al cargar la página
 actualizarTabla();

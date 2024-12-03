@@ -155,13 +155,6 @@ td {
   color: #555;
 }
 
-caption {
-  text-align: left;
-  font-size: 1.2rem;
-  margin: 1rem 0;
-  color: #6c63ff;
-  font-weight: bold;
-}
 
 .results-section {
   background: linear-gradient(to right, #ffffff, #6c63ff);
