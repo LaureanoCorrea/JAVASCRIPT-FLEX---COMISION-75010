@@ -1,83 +1,142 @@
 <!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Calculador de Precio por Kilómetro</title>
-  <link rel="stylesheet" href="./css/styles.css">
-</head>
-<body>
-  <header>
-    <div class="logo">
-      <img src="./logo/logo.svg" alt="Logo" class="logo-img">
-    </div>
-    <nav>
-      <ul>
-        <li><a href="#configurar-tarifas">Configurar Tarifas</a></li>
-        <li><a href="#ingresar-datos">Ingresar Datos del Viaje</a></li>
-        <li><a href="#resultados">Resultados</a></li>
-      </ul>
-    </nav>
-  </header>
-  
-  <main>
-    <section id="configurar-tarifas" class="form-section">
-      <h2>Configurar Tarifas</h2>
-      <p>Ingresa el precio por kilómetro y el precio de la movida para calcular el costo de los viajes.</p>
-      <form id="config-form">
-        <label for="precio-km">Precio por Kilómetro:</label>
-        <input type="number" id="precio-km" placeholder="Ejemplo: 50" required>
-    
-        <label for="precio-movida">Precio de la Movida:</label>
-        <input type="number" id="precio-movida" placeholder="Ejemplo: 100" required>
-    
-        <button type="submit">Guardar Tarifas</button>
-      </form>
-    </section>
-    
-    <section id="ingresar-datos" class="form-section">
-      <h2>Ingresar Datos del Viaje</h2>
-      <p>Introduce los datos del viaje, como la patente y los kilómetros recorridos.</p>
-      <form id="formulario">
-        <label for="dominio">Patente/Dominio:</label>
-        <input type="text" id="dominio" placeholder="Ingrese la patente" required>
-    
-        <label for="km">Kilómetros recorridos:</label>
-        <input type="number" id="km" placeholder="Ingrese los km" required>
-    
-        <button type="submit">Agregar Viaje</button>
-      </form>
-    </section>
-    
-    <section id="resultados" class="results-section">
-      <h2>Resultados de los Viajes</h2>
-      <p>Aquí se muestran los resultados de los viajes calculados según las tarifas ingresadas.</p>
-      <p>(En caso de superar los 200km de viaje, no se sumara el precio de la movida).</p>
-      <table id="tabla-resultados">
-        <thead>
-          <tr>
-            <th>Patente/Dominio</th>
-            <th>Precio Km</th>
-            <th>Precio Movida</th>
-            <th>Kilómetros Recorridos</th>
-            <th>Costo del Viaje</th>
-          </tr>
-        </thead>
-        <tbody>
-          <!-- Filas generadas dinámicamente con JS -->
-        </tbody>
-      </table>
-      <div id="modal" class="modal">
-        <div class="modal-content">
-          <span id="close" class="close-btn">&times;</span>
-          <h3 id="modal-title"></h3>
-          <p id="modal-message"></p>
-          <button id="close-btn">Cerrar</button>
-        </div>
-      </div>
-    </section>
-  </main>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta
+			name="viewport"
+			content="width=device-width, initial-scale=1.0"
+		/>
+		<title>Calculador de Rutas y Precios</title>
+		<link
+			rel="stylesheet"
+			href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
+		/>
+		<link
+			rel="stylesheet"
+			href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css"
+		/>
+		<link
+			rel="stylesheet"
+			href="assets/css/styles.css"
+		/>
+	</head>
+	<body>
+		<header>
+			<h1>Calculador de Rutas y Precios</h1>
+			<p>
+				Calcula costos de viajes manualmente o usa el mapa para buscar rutas.
+			</p>
+		</header>
 
-  <script src="js/index.js"></script>
-</body>
+		<main>
+			<section id="manual-inputs">
+				<h2>Configuración de Tarifas</h2>
+				<form id="config-form">
+					<label for="precio-km">Precio por Kilómetro:</label>
+					<input
+						type="number"
+						id="precio-km"
+						placeholder="Ejemplo: 500"
+						required
+					/>
+
+					<label for="precio-movida">Precio de la Movida:</label>
+					<input
+						type="number"
+						id="precio-movida"
+						placeholder="Ejemplo: 12000"
+						required
+					/>
+
+					<button type="submit">Guardar Tarifas</button>
+				</form>
+
+				<div
+					id="registered-domain"
+					style="display: none"
+				>
+					<strong>Dominio Actual: <span></span></strong>
+				</div>
+
+				<!-- Contenedor para los precios -->
+				<div id="prices-container">
+					<p id="tariff-price-per-km"></p>
+					<p id="tariff-move-cost"></p>
+				</div>
+
+				<!-- Este será el contenedor donde se mostrará el loader -->
+				<div
+					id="loader-container"
+					style="display: none"
+				>
+					<div id="loader">Cargando...</div>
+				</div>
+			</section>
+
+			<section id="map-inputs">
+				<h2>Buscar Ruta con el Mapa</h2>
+
+				<form id="register-domain-form">
+					<label for="vehicle-domain">Dominio/Patente del Vehículo:</label>
+					<input
+						type="text"
+						id="vehicle-domain"
+						placeholder="Ejemplo: ABC123"
+						required
+					/>
+					<button type="submit">Registrar Dominio</button>
+				</form>
+
+				<div id="map"></div>
+				<p>Selecciona un punto de inicio y uno de destino en el mapa.</p>
+
+				<p>O si prefieres, Coloca manualmente los km recorridos:</p>
+				<label for="input-km">Kilómetros:</label>
+				<input
+					type="number"
+					id="input-km"
+					min="0"
+					placeholder="Ingresa los kilómetros"
+				/>
+			</section>
+
+			<!-- Este es el contenedor donde se mostrará el botón para calcular -->
+			<div
+				id="calculate-route-btn"
+				style="margin: 20px auto; display: none"
+			>
+				<button>Calcular Ruta</button>
+			</div>
+
+			<!-- Loader global -->
+			<div
+				id="loader"
+				style="display: none"
+			>
+				Cargando...
+			</div>
+
+			<section id="results">
+				<h2>Resultados</h2>
+				<table id="tabla-resultados">
+					<thead>
+						<tr>
+							<th>Patente/Dominio</th>
+							<th>Precio Km</th>
+							<th>Precio Movida</th>
+							<th>Kilómetros Recorridos</th>
+							<th>Costo del Viaje</th>
+							<th>Acciones</th>
+						</tr>
+					</thead>
+					<tbody></tbody>
+				</table>
+				<button id="delete-all">Eliminar Todo</button>
+			</section>
+		</main>
+
+		<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+		<script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+		<script src="assets/js/aap.js"></script>
+	</body>
 </html>
