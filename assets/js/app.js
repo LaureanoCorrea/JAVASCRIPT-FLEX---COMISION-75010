@@ -1,203 +1,304 @@
-let startPoint = null;
-let endPoint = null;
-let currentDomain = null;
-let pricePerKm = 0;
-let moveCost = 0;
-const apiKey = '5b3ce3597851110001cf6248818b07fdf52e4de68ce2f04569d157cc';
-let isTariffLoaded = false;
+document.addEventListener('DOMContentLoaded', function () {
+	let startPoint = null;
+	let endPoint = null;
+	let startMarker = null;
+	let endMarker = null;
+	let currentDomain = null;
+	let pricePerKm = 0;
+	let moveCost = 0;
+	let isTariffLoaded = false;
+	let calculateButton = null;
+	let kmInput = document.getElementById('km');
 
-// Inicialización del mapa
-const map = L.map('map').setView([-34.61315, -58.37723], 13); // Centrado por defecto en Buenos Aires
+	const apiKey = '5b3ce3597851110001cf6248818b07fdf52e4de68ce2f04569d157cc';
+	// Inicialización del mapa
+	const map = L.map('map').setView([-34.61315, -58.37723], 13);
 
-// Agregar el mapa base (utilizando OpenStreetMap)
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+	L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-// Función para mostrar notificaciones con Toastify
-function showToast(message, color = '#00A170') {
-	Toastify({
-		text: message,
-		duration: 3000,
-		gravity: 'top',
-		position: 'right',
-		style: {
-			background: color,
-		},
-	}).showToast();
-}
-
-// Guardar tarifas
-document.getElementById('config-form').addEventListener('submit', (event) => {
-	event.preventDefault();
-
-	// Obtener las tarifas
-	pricePerKm = parseFloat(document.getElementById('precio-km').value);
-	moveCost = parseFloat(document.getElementById('precio-movida').value);
-
-	// Validar que los valores sean números
-	if (isNaN(pricePerKm) || isNaN(moveCost)) {
-		showToast(
-			'Por favor, ingresa valores válidos para las tarifas.',
-			'#FF6347'
-		);
-		return;
+	// Función para mostrar notificaciones
+	function showToast(message, color = '#00A170') {
+		Toastify({
+			text: message,
+			duration: 3000,
+			gravity: 'top',
+			position: 'right',
+			style: { background: color },
+		}).showToast();
 	}
 
-	document.getElementById('tariff-price-per-km').textContent =
-		pricePerKm.toFixed(2);
-	document.getElementById('tariff-move-cost').textContent = moveCost.toFixed(2);
-
-	isTariffLoaded = true;
-
-	// Mostrar mensaje de éxito y limpiar los campos
-	showToast('Tarifas guardadas correctamente.');
-	document.getElementById('precio-km').value = '';
-	document.getElementById('precio-movida').value = '';
-});
-
-// Registrar dominio/patente
-document
-	.getElementById('register-domain-form')
-	.addEventListener('submit', (event) => {
+	// Guardar tarifas
+	document.getElementById('config-form').addEventListener('submit', (event) => {
 		event.preventDefault();
+		pricePerKm = parseFloat(document.getElementById('km').value);
+		moveCost = parseFloat(document.getElementById('movida').value);
 
-		if (!isTariffLoaded) {
+		if (isNaN(pricePerKm) || isNaN(moveCost)) {
 			showToast(
-				'Por favor, carga las tarifas antes de registrar el dominio.',
+				'Por favor, ingresa valores válidos para las tarifas.',
 				'#FF6347'
 			);
 			return;
 		}
 
-		const domainInput = document.getElementById('vehicle-domain');
-		currentDomain = domainInput.value.trim().toUpperCase();
+		// Mostrar tarifas debajo del formulario
+		document.getElementById('tariff-info').style.display = 'block';
+		document.getElementById('precio-km').textContent = pricePerKm.toFixed(2);
+		document.getElementById('precio-movida').textContent = moveCost.toFixed(2);
 
+		isTariffLoaded = true;
+		showToast('Tarifas guardadas correctamente.');
+		document.getElementById('config-form').reset();
+	});
+
+	// Registrar dominio/patente
+	document
+		.getElementById('register-domain-form')
+		.addEventListener('submit', (event) => {
+			event.preventDefault();
+
+			if (!isTariffLoaded) {
+				showToast(
+					'Por favor, carga las tarifas antes de registrar el dominio.',
+					'#FF6347'
+				);
+				return;
+			}
+
+			const domainInput = document.getElementById('vehicle-domain');
+			currentDomain = domainInput.value.trim().toUpperCase();
+
+			if (!currentDomain) {
+				showToast('Por favor, ingresa un dominio válido.', '#FF6347');
+				return;
+			}
+
+			// Mostrar dominio debajo del formulario
+			document.getElementById('registered-domain').style.display = 'block';
+			document.getElementById('current-domain').textContent = currentDomain;
+			domainInput.value = '';
+			showToast('Dominio registrado correctamente.');
+
+			// Habilitar el campo de kilómetros después de registrar el dominio
+			document.getElementById('km').disabled = false;
+		});
+
+	// Desactivar la interacción con el mapa cuando el input de kilómetros tenga valor
+	kmInput.addEventListener('input', () => {
+		const kmValue = kmInput.value.trim();
+		if (kmValue && !isNaN(kmValue) && kmValue > 0) {
+			// Desactivar el mapa
+			map.dragging.disable();
+			map.scrollWheelZoom.disable();
+			map.doubleClickZoom.disable();
+			map.touchZoom.disable();
+			map.boxZoom.disable();
+			map.keyboard.disable();
+			map.off('click', mapClickListener); // Desactivar la capacidad de hacer clic en el mapa
+
+			// Mostrar el botón de calcular viaje si el valor del input es válido
+			showCalculateButton();
+		} else {
+			// Reactivar el mapa si el input está vacío o no es un número válido
+			map.dragging.enable();
+			map.scrollWheelZoom.enable();
+			map.doubleClickZoom.enable();
+			map.touchZoom.enable();
+			map.boxZoom.enable();
+			map.keyboard.enable();
+			map.on('click', mapClickListener); // Reactivar la capacidad de hacer clic en el mapa
+
+			// Ocultar el botón de calcular viaje
+			if (calculateButton) {
+				calculateButton.style.display = 'none';
+			}
+		}
+	});
+
+	// Seleccionar puntos en el mapa
+	let mapClickListener = map.on('click', (event) => {
 		if (!currentDomain) {
-			showToast('Por favor, ingresa un dominio válido.', '#FF6347');
-			return;
-		}
-
-		// Mostrar el dominio registrado
-		const registeredDomainElement =
-			document.getElementById('registered-domain');
-		registeredDomainElement.style.display = 'block';
-		registeredDomainElement.querySelector('span').textContent = currentDomain;
-
-		domainInput.value = '';
-
-		showToast('Dominio registrado correctamente.');
-	});
-
-// Seleccionar puntos en el mapa
-map.on('click', (event) => {
-	if (!currentDomain) {
-		showToast(
-			'Registra un dominio antes de seleccionar puntos en el mapa.',
-			'#FF6347'
-		);
-		return;
-	}
-
-	if (!startPoint) {
-		startPoint = event.latlng;
-		L.marker(startPoint).addTo(map).bindPopup('Punto de inicio').openPopup();
-		showToast('Punto de inicio seleccionado.');
-	} else if (!endPoint) {
-		// Si no se ha seleccionado el punto de destino
-		endPoint = event.latlng;
-		L.marker(endPoint).addTo(map).bindPopup('Punto de destino').openPopup();
-
-		calculateRoute();
-		showToast('Punto de destino seleccionado.');
-	}
-});
-
-// Calcular la ruta entre los puntos seleccionados
-async function calculateRoute() {
-	let distanceKm;
-
-	if (startPoint && endPoint) {
-		// Si los puntos están seleccionados en el mapa, calculamos la ruta
-		try {
-			// Configuración de la API para obtener la ruta
-			const routeUrl = `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${apiKey}`;
-			const body = {
-				coordinates: [
-					[startPoint.lng, startPoint.lat],
-					[endPoint.lng, endPoint.lat],
-				],
-			};
-
-			// Enviar la solicitud a OpenRouteService
-			const response = await fetch(routeUrl, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(body),
-			});
-
-			// Parsear la respuesta JSON
-			const data = await response.json();
-			distanceKm = (data.routes[0].summary.distance / 1000).toFixed(2); // Convertir a kilómetros
-		} catch (error) {
-			// Manejo de errores
-			console.error('Error al calcular la ruta:', error);
-			showToast('Hubo un error al calcular la ruta.', '#FF6347');
-			return;
-		}
-	} else {
-		// Si no se seleccionaron puntos en el mapa, usamos el input de kilómetros
-		distanceKm = parseFloat(document.getElementById('input-km').value);
-
-		// Validar que los kilómetros ingresados sean válidos
-		if (isNaN(distanceKm) || distanceKm <= 0) {
 			showToast(
-				'Por favor, ingresa un número válido de kilómetros.',
+				'Registra un dominio antes de seleccionar puntos en el mapa.',
 				'#FF6347'
 			);
 			return;
 		}
-	}
 
-	let cost;
-	if (distanceKm > 200) {
-		// Si la distancia es mayor a 200 km, no sumamos el costo de la movida
-		cost = distanceKm * pricePerKm;
-	} else {
-		// Si la distancia es menor o igual a 200 km, se suma el costo de la movida
-		cost = distanceKm * pricePerKm + moveCost;
-	}
-	addRowToTable(currentDomain, pricePerKm, moveCost, distanceKm, cost);
-
-	startPoint = null;
-	endPoint = null;
-	currentDomain = null;
-	document.getElementById('registered-domain').style.display = 'none';
-	document.getElementById('registered-domain span').textContent = '';
-}
-
-// Agregar fila a la tabla de resultados
-function addRowToTable(domain, pricePerKm, moveCost, km, totalCost) {
-	const tableBody = document.querySelector('#tabla-resultados tbody');
-	const row = document.createElement('tr');
-
-	row.innerHTML = `
-    <td>${domain}</td>
-    <td>${pricePerKm.toFixed(2)}</td>
-    <td>${moveCost.toFixed(2)}</td>
-    <td>${km}</td>
-    <td>${totalCost.toFixed(2)}</td>
-    <td><button class="delete-btn">Eliminar</button></td>
-  `;
-
-	row.querySelector('.delete-btn').addEventListener('click', () => {
-		row.remove();
-		showToast('Viaje eliminado.');
+		if (!startPoint) {
+			startPoint = event.latlng;
+			startMarker = L.marker(startPoint)
+				.addTo(map)
+				.bindPopup('Punto de inicio')
+				.openPopup();
+			showToast('Punto de inicio seleccionado.');
+		} else if (!endPoint) {
+			endPoint = event.latlng;
+			endMarker = L.marker(endPoint)
+				.addTo(map)
+				.bindPopup('Punto de destino')
+				.openPopup();
+			showCalculateButton();
+			showToast('Punto de destino seleccionado.');
+		}
 	});
 
-	tableBody.appendChild(row);
-}
+	// Mostrar botón "Calcular Viaje"
+	function showCalculateButton() {
+		// Verificar si el input tiene valor o si se seleccionaron ambos puntos en el mapa
+		if ((startPoint && endPoint) || (kmInput.value && !isNaN(kmInput.value))) {
+			if (!calculateButton) {
+				calculateButton = document.createElement('button');
+				calculateButton.textContent = 'Calcular Viaje';
+				calculateButton.classList.add('btn', 'btn-primary');
+				document.getElementById('map-inputs').appendChild(calculateButton);
 
-document.getElementById('delete-all').addEventListener('click', () => {
-	const tableBody = document.querySelector('#tabla-resultados tbody');
-	tableBody.innerHTML = '';
-	showToast('Todos los viajes eliminados.');
+				calculateButton.addEventListener('click', () => {
+					calculateRoute();
+				});
+			}
+			calculateButton.style.display = 'block';
+		}
+	}
+
+	// Calcular la ruta entre los puntos seleccionados
+	async function calculateRoute() {
+		let distanceKm = 0;
+		// Si se ingresa un valor en el input, usar ese valor
+		if (kmInput.value && !isNaN(kmInput.value)) {
+			distanceKm = parseFloat(kmInput.value);
+		} else if (startPoint && endPoint) {
+			// Si no se han ingresado datos en el input, calcular la distancia en el mapa
+			try {
+				const routeUrl = `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${apiKey}`;
+				const body = {
+					coordinates: [
+						[startPoint.lng, startPoint.lat],
+						[endPoint.lng, endPoint.lat],
+					],
+				};
+
+				const response = await fetch(routeUrl, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify(body),
+				});
+				const data = await response.json();
+				distanceKm = (data.routes[0].summary.distance / 1000).toFixed(2);
+			} catch (error) {
+				showToast('Error al calcular la ruta.', '#FF6347');
+				return;
+			}
+		}
+
+		// Mostrar el spinner
+		document.getElementById('loader').style.visibility = 'visible'; // Mostrar spinner
+		setTimeout(function () {
+			document.getElementById('loader').style.visibility = 'hidden';
+		}, 3000);
+
+		let totalCost =
+			distanceKm > 200
+				? distanceKm * pricePerKm
+				: distanceKm * pricePerKm + moveCost;
+		addRowToTable(currentDomain, pricePerKm, moveCost, distanceKm, totalCost);
+
+		// Ocultar el spinner
+		document.getElementById('loader').style.display = 'none'; // Ocultar spinner
+
+		// Restablecer los valores
+		resetSelection(); // Llamada para restablecer puntos y otros valores
+	}
+
+	// Función para restablecer los valores de puntos seleccionados y otros estados
+	function resetSelection() {
+		// Eliminar los marcadores si existen
+		if (startMarker) {
+			map.removeLayer(startMarker); // Eliminar marcador de inicio
+			startMarker = null; // Restablecer la variable
+		}
+		if (endMarker) {
+			map.removeLayer(endMarker); // Eliminar marcador de fin
+			endMarker = null; // Restablecer la variable
+		}
+
+		// Restablecer las coordenadas a null
+		startPoint = null;
+		endPoint = null;
+
+		// Restablecer las tarifas y dominio
+		document.getElementById('tariff-info').style.display = 'none';
+		document.getElementById('registered-domain').style.display = 'none';
+		currentDomain = '';
+
+		// Restablecer el botón de cálculo
+		if (calculateButton) {
+			calculateButton.style.display = 'none';
+		}
+	}
+
+	// Agregar fila a la tabla y guardar en localStorage
+	function addRowToTable(domain, pricePerKm, moveCost, km, totalCost) {
+		const tableBody = document.querySelector('#tabla-resultados tbody');
+		const row = document.createElement('tr');
+
+		row.innerHTML = `
+            <td>${domain}</td>
+            <td>${pricePerKm.toFixed(2)}</td>
+            <td>${moveCost.toFixed(2)}</td>
+            <td>${km}</td>
+            <td>${totalCost.toFixed(2)}</td>
+            <td><button class="delete-btn">Eliminar</button></td>
+        `;
+
+		row.querySelector('.delete-btn').addEventListener('click', () => {
+			row.remove();
+			saveTableData();
+			showToast('Viaje eliminado.');
+		});
+
+		tableBody.appendChild(row);
+		saveTableData();
+		checkTableData(); // Llamar a checkTableData después de agregar la fila
+	}
+
+	// Guardar datos de la tabla en localStorage
+	function saveTableData() {
+		const tableRows = document.querySelectorAll('#tabla-resultados tbody tr');
+		const data = Array.from(tableRows).map((row) => ({
+			domain: row.cells[0].textContent,
+			pricePerKm: parseFloat(row.cells[1].textContent),
+			moveCost: parseFloat(row.cells[2].textContent),
+			km: parseFloat(row.cells[3].textContent),
+			totalCost: parseFloat(row.cells[4].textContent),
+		}));
+		localStorage.setItem('tableData', JSON.stringify(data));
+	}
+
+	// Cargar datos desde localStorage
+	function loadTableData() {
+		const data = JSON.parse(localStorage.getItem('tableData')) || [];
+		data.forEach((item) => {
+			addRowToTable(
+				item.domain,
+				item.pricePerKm,
+				item.moveCost,
+				item.km,
+				item.totalCost
+			);
+		});
+	}
+
+	// Verificar si hay datos en la tabla
+	function checkTableData() {
+		const tableRows = document.querySelectorAll('#tabla-resultados tbody tr');
+		if (tableRows.length > 0) {
+			document.getElementById('tabla-resultados').style.display = 'block';
+		} else {
+			document.getElementById('tabla-resultados').style.display = 'none';
+		}
+	}
+
+	// Cargar datos al iniciar
+	loadTableData();
 });
