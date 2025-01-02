@@ -22,19 +22,25 @@
 	</head>
 	<body>
 		<header>
-			<h1>Calculador de Rutas y Precios</h1>
-			<p>
-				Calcula costos de viajes manualmente usando el mapa para buscar rutas.
-			</p>
+			<img
+				src="assets/logo/logo.svg"
+				alt="Logo"
+				id="logo"
+			/>
+			<div class="header-content">
+				<h1>Calculador de Rutas y Precios</h1>
+				<p>
+					Calcula costos de viajes manualmente usando el mapa para buscar rutas.
+				</p>
+			</div>
 		</header>
 
 		<main>
 			<div
-				id="loader"
+				id="overlay"
 				style="display: none"
-			>
-				<div class="spinner"></div>
-			</div>
+			></div>
+
 			<section id="manual-inputs">
 				<h2>Configuración de Tarifas</h2>
 				<form id="config-form">
@@ -58,8 +64,8 @@
 					id="tariff-info"
 					style="display: none"
 				>
-					<p>Precio por Kilómetro: <span id="precio-km"></span></p>
-					<p>Precio de la Movida: <span id="precio-movida"></span></p>
+					<p>Precio por Kilómetro: $<span id="precio-km"></span></p>
+					<p>Precio de la Movida: $<span id="precio-movida"></span></p>
 				</div>
 			</section>
 
@@ -102,10 +108,21 @@
 					placeholder="Ingresa los kilómetros"
 					disabled
 				/>
-
+				<div
+					id="lottie-loader"
+					style="
+						display: none;
+						position: fixed;
+						top: 50%;
+						left: 50%;
+						transform: translate(-50%, -50%);
+						z-index: 1000;
+					"
+				></div>
 				<!-- Mapa interactivo -->
 				<div
 					id="map"
+					544
 					style="width: 100%; height: 400px; background-color: lightgray"
 				></div>
 			</section>
@@ -136,6 +153,7 @@
 
 		<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
 		<script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
-		<script src="assets/js/aap.js"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.10.2/lottie.min.js"></script>
+		<script src="assets/js/index.js"></script>
 	</body>
 </html>

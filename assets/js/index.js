@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', function () {
 	let isTariffLoaded = false;
 	let calculateButton = null;
 	let kmInput = document.getElementById('kmManual');
-
+	//API KEY mapas
 	const apiKey = '5b3ce3597851110001cf6248818b07fdf52e4de68ce2f04569d157cc';
 	// Inicialización del mapa
 	const map = L.map('map').setView([-34.61315, -58.37723], 13);
@@ -27,6 +27,14 @@ document.addEventListener('DOMContentLoaded', function () {
 		}).showToast();
 	}
 
+	const lottieLoader = lottie.loadAnimation({
+		container: document.getElementById('lottie-loader'),
+		renderer: 'svg',
+		loop: true,
+		autoplay: false,
+		path: 'assets/logo/lootie.json',
+	});
+
 	// Guardar tarifas
 	document.getElementById('config-form').addEventListener('submit', (event) => {
 		event.preventDefault();
@@ -41,7 +49,6 @@ document.addEventListener('DOMContentLoaded', function () {
 			return;
 		}
 
-		// Mostrar tarifas debajo del formulario
 		document.getElementById('tariff-info').style.display = 'block';
 		document.getElementById('precio-km').textContent = pricePerKm.toFixed(2);
 		document.getElementById('precio-movida').textContent = moveCost.toFixed(2);
@@ -73,60 +80,44 @@ document.addEventListener('DOMContentLoaded', function () {
 				return;
 			}
 
-			// Mostrar dominio debajo del formulario
 			document.getElementById('registered-domain').style.display = 'block';
 			document.getElementById('current-domain').textContent = currentDomain;
 			domainInput.value = '';
 			showToast('Dominio registrado correctamente.');
 
-			// Habilitar el campo de kilómetros después de registrar el dominio
+			// Habilitar el campo de kilómetros y el mapa después de registrar el dominio
 			document.getElementById('kmManual').disabled = false;
+			toggleMapInteraction(true);
 		});
 
-	// Desactivar la interacción con el mapa cuando el input de kilómetros tenga valor
-	// Función para habilitar o deshabilitar la interacción con el mapa
-	function toggleMapInteraction(enable) {
-		if (enable) {
-			console.log('Activando interacciones del mapa'); // Depuración
-			map.dragging.enable();
-			map.scrollWheelZoom.enable();
-			map.doubleClickZoom.enable();
-			map.touchZoom.enable();
-			map.boxZoom.enable();
-			map.keyboard.enable();
-			map.on('click', mapClickListener); // Reactivar clics en el mapa
+	kmInput.addEventListener('input', function () {
+		let kmValue = parseFloat(kmInput.value);
+		if (isNaN(kmValue) || kmValue <= 0) {
+			// Habilitar clics en el mapa si el valor no es válido
+			toggleMapInteraction(true);
+			if (calculateButton) calculateButton.style.display = 'none';
 		} else {
-			console.log('Desactivando interacciones del mapa'); // Depuración
-			map.dragging.disable();
-			map.scrollWheelZoom.disable();
-			map.doubleClickZoom.disable();
-			map.touchZoom.disable();
-			map.boxZoom.disable();
-			map.keyboard.disable();
-			map.off('click', mapClickListener); // Desactivar clics en el mapa
-		}
-	}
-
-	// Escuchar cambios en el input de kilómetros manuales
-	kmInput.addEventListener('input', () => {
-		const kmValue = kmInput.value.trim();
-		console.log('Valor de kmInput: ', kmValue); // Depuración
-
-		// Si el input tiene un valor válido (es un número y mayor que 0), desactivar el mapa
-		if (kmValue && !isNaN(kmValue) && kmValue > 0) {
-			toggleMapInteraction(false); // Desactivar interacción con el mapa
-		} else {
-			toggleMapInteraction(true); // Reactivar interacción con el mapa
+			// Deshabilitar clics en el mapa si se ingresa un valor válido
+			toggleMapInteraction(false);
+			showCalculateButton();
 		}
 	});
 
-	// Comprobar si el campo kmInput está correctamente seleccionado
-	if (!kmInput) {
-		console.error('No se encontró el campo kmInput');
+	// Habilitar o deshabilitar la interacción con el mapa
+	function toggleMapInteraction(enable) {
+		const action = enable ? 'enable' : 'disable';
+		map.dragging[action]();
+		map.scrollWheelZoom[action]();
+		map.doubleClickZoom[action]();
+		map.touchZoom[action]();
+		map.boxZoom[action]();
+		map.keyboard[action]();
+		map.off('click', mapClickHandler); // Desactivar clics si no está habilitado
+		if (enable) map.on('click', mapClickHandler); // Activar clics si está habilitado
 	}
 
-	// Seleccionar puntos en el mapa
-	let mapClickListener = map.on('click', (event) => {
+	// Manejador de clics en el mapa para agregar puntos
+	function mapClickHandler(event) {
 		if (!currentDomain) {
 			showToast(
 				'Registra un dominio antes de seleccionar puntos en el mapa.',
@@ -151,16 +142,19 @@ document.addEventListener('DOMContentLoaded', function () {
 			showCalculateButton();
 			showToast('Punto de destino seleccionado.');
 		}
-	});
+	}
 
-	// Mostrar botón "Calcular Viaje"
 	function showCalculateButton() {
 		// Verificar si el input tiene valor o si se seleccionaron ambos puntos en el mapa
 		if ((startPoint && endPoint) || (kmInput.value && !isNaN(kmInput.value))) {
 			if (!calculateButton) {
 				calculateButton = document.createElement('button');
 				calculateButton.textContent = 'Calcular Viaje';
-				calculateButton.classList.add('btn', 'btn-primary');
+				calculateButton.classList.add(
+					'btn',
+					'btn-primary',
+					'calculate-route-btn'
+				);
 				document.getElementById('map-inputs').appendChild(calculateButton);
 
 				calculateButton.addEventListener('click', () => {
@@ -171,9 +165,15 @@ document.addEventListener('DOMContentLoaded', function () {
 		}
 	}
 
-	// Calcular la ruta entre los puntos seleccionados
 	async function calculateRoute() {
 		let distanceKm = 0;
+
+		// Mostrar overlay y la animación de Lottie al iniciar el cálculo
+		document.getElementById('overlay').style.display = 'block';
+		const loaderContainer = document.getElementById('lottie-loader');
+		loaderContainer.style.display = 'block';
+		lottieLoader.play();
+
 		// Si se ingresa un valor en el input, usar ese valor
 		if (kmInput.value && !isNaN(kmInput.value)) {
 			distanceKm = parseFloat(kmInput.value);
@@ -197,58 +197,61 @@ document.addEventListener('DOMContentLoaded', function () {
 				distanceKm = (data.routes[0].summary.distance / 1000).toFixed(2);
 			} catch (error) {
 				showToast('Error al calcular la ruta.', '#FF6347');
+				loaderContainer.style.display = 'none';
+				lottieLoader.stop();
 				return;
 			}
 		}
 
-		// Mostrar el spinner
-		document.getElementById('loader').style.visibility = 'visible'; // Mostrar spinner
-		setTimeout(function () {
-			document.getElementById('loader').style.visibility = 'hidden';
-		}, 3000);
-
+		// Realizar el cálculo del costo total
 		let totalCost =
 			distanceKm > 200
 				? distanceKm * pricePerKm
 				: distanceKm * pricePerKm + moveCost;
 		addRowToTable(currentDomain, pricePerKm, moveCost, distanceKm, totalCost);
 
-		// Ocultar el spinner
-		document.getElementById('loader').style.display = 'none'; // Ocultar spinner
-
-		// Restablecer los valores
-		resetSelection(); // Llamada para restablecer puntos y otros valores
-
-		// Restablecer el valor del input
+		resetSelection();
+		setTimeout(() => {
+			document.getElementById('overlay').style.display = 'none';
+			loaderContainer.style.display = 'none';
+			lottieLoader.stop();
+		}, 2000);
 	}
 
 	// Función para restablecer los valores de puntos seleccionados y otros estados
 	function resetSelection() {
-		// Eliminar los marcadores si existen
 		if (startMarker) {
-			map.removeLayer(startMarker); // Eliminar marcador de inicio
-			startMarker = null; // Restablecer la variable
+			map.removeLayer(startMarker);
+			startMarker = null;
 		}
 		if (endMarker) {
-			map.removeLayer(endMarker); // Eliminar marcador de fin
-			endMarker = null; // Restablecer la variable
+			map.removeLayer(endMarker);
+			endMarker = null;
 		}
-
-		// Restablecer las coordenadas a null
 		kmInput.value = '';
 		startPoint = null;
 		endPoint = null;
 
-		// Restablecer las tarifas y dominio
 		document.getElementById('tariff-info').style.display = 'none';
 		document.getElementById('registered-domain').style.display = 'none';
 		currentDomain = '';
-
-		// Restablecer el botón de cálculo
 		if (calculateButton) {
 			calculateButton.style.display = 'none';
 		}
+		toggleMapInteraction(true);
 	}
+
+	// Validación de los kilómetros manuales
+	kmInput.addEventListener('input', function () {
+		let kmValue = parseFloat(kmInput.value);
+		if (isNaN(kmValue) || kmValue <= 0) {
+			toggleMapInteraction(true); // Habilitar clics en el mapa si el valor no es válido
+			calculateButton.style.display = 'none';
+		} else {
+			toggleMapInteraction(false); // Deshabilitar clics en el mapa si se ingresa un valor válido
+			showCalculateButton();
+		}
+	});
 	// Agregar fila a la tabla y guardar en localStorage
 	function addRowToTable(domain, pricePerKm, moveCost, km, totalCost) {
 		const tableBody = document.querySelector('#tabla-resultados tbody');
@@ -260,18 +263,18 @@ document.addEventListener('DOMContentLoaded', function () {
             <td>${moveCost.toFixed(2)}</td>
             <td>${km}</td>
             <td>${totalCost.toFixed(2)}</td>
-            <td><button class="delete-btn">Eliminar</button></td>
-        `;
+            <td><button class="delete-btn">Eliminar</button></td>`;
 
 		row.querySelector('.delete-btn').addEventListener('click', () => {
 			row.remove();
 			saveTableData();
+			checkTableData();
 			showToast('Viaje eliminado.');
 		});
 
 		tableBody.appendChild(row);
 		saveTableData();
-		checkTableData(); // Llamar a checkTableData después de agregar la fila
+		checkTableData();
 	}
 
 	// Guardar datos de la tabla en localStorage
@@ -285,6 +288,7 @@ document.addEventListener('DOMContentLoaded', function () {
 			totalCost: parseFloat(row.cells[4].textContent),
 		}));
 		localStorage.setItem('tableData', JSON.stringify(data));
+		checkTableData();
 	}
 
 	// Cargar datos desde localStorage
@@ -299,6 +303,7 @@ document.addEventListener('DOMContentLoaded', function () {
 				item.totalCost
 			);
 		});
+		checkTableData();
 	}
 
 	// Verificar si hay datos en la tabla
@@ -308,12 +313,9 @@ document.addEventListener('DOMContentLoaded', function () {
 			.getElementsByTagName('tbody')[0];
 		const deleteButton = document.getElementById('delete-all');
 
-		// Verificar si la tabla tiene filas de datos
 		if (tableBody.rows.length > 0) {
-			// Si hay filas, mostrar el botón
 			deleteButton.style.display = 'block';
 		} else {
-			// Si no hay filas, ocultar el botón
 			deleteButton.style.display = 'none';
 		}
 	}
@@ -321,10 +323,11 @@ document.addEventListener('DOMContentLoaded', function () {
 	// Función para eliminar todas las filas de la tabla
 	document.getElementById('delete-all').addEventListener('click', () => {
 		const tableBody = document.querySelector('#tabla-resultados tbody');
-		tableBody.innerHTML = ''; // Eliminar todas las filas
-		saveTableData(); // Guardar los cambios en localStorage
+		tableBody.innerHTML = '';
+		saveTableData();
 		showToast('Todos los viajes eliminados.');
 	});
 
-	loadTableData(); // Cargar los datos al iniciar la página
+	loadTableData();
+	checkTableData();
 });
