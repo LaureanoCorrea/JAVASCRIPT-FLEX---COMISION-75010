@@ -128,7 +128,7 @@ form button:hover {
 }
 
 #tabla-resultados {
-	width: 90%;
+	width: 70%;
 	margin: 2rem auto;
 	border-collapse: collapse;
 	text-align: left;
@@ -193,8 +193,27 @@ button:hover {
 	background-color: #0056b3;
 }
 
+#delete-container {
+	width: 90%;
+	max-width: 800px;
+	margin: 1rem auto;
+	text-align: center;
+}
+
 #delete-all {
-	margin-top: 15px;
+	width: 100%;
+	padding: 10px;
+	background-color: #ff4d4f;
+	color: white;
+	font-size: 1rem;
+	border: none;
+	border-radius: 5px;
+	cursor: pointer;
+	transition: background-color 0.3s;
+}
+
+#delete-all:hover {
+	background-color: #d9363e;
 }
 
 @media (max-width: 768px) {
